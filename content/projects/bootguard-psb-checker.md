@@ -28,7 +28,7 @@ On Intel processors only a single MSR must be read, then the status can be deter
 | `0x20000000` | Measured |
 | `0x30000000` | Verified + Measured |
 
-On AMD, the process is a little bit more complicated. PCI I/O must be performed using Index / Data ports on the PCI root complex. Writing `0x03810994`[1](#2e60520a-1446-42b7-b642-8160866972df) to index port 0xB8, a `DWORD` can be read back from port `0xBC` that shows the status of PSB.
+On AMD, the process is a little bit more complicated. PCI I/O must be performed using Index / Data ports on the PCI root complex. Writing [`0x03810994`](#references) to index port 0xB8, a `DWORD` can be read back from port `0xBC` that shows the status of PSB.
 
 The status of PSB can be determined by the looking at the 24th bit: `(output >> 24) & 1)`
 
