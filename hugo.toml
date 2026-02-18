@@ -3,6 +3,9 @@ languageCode = "en-us"
 title = "virtfunc"
 theme = "re-terminal"
 
+[caches]
+  [caches.images]
+    dir = ':cacheDir/images'
 
 # Required for Chroma and the custom syntax highlighting.
 [markup.highlight]
