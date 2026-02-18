@@ -17,11 +17,11 @@ Before flashing unsigned firmware, one must be sure that BootGuard / PSB is not 
 
 ## Under the hood
 
-The program identifies the CPU vendor, checks for Hyper-V and then proceeds if no Hyper-V and Intel processor are detected. If they both are, it gives the user the option to continue, which is risky.
+The program identifies the CPU vendor, checks for Hyper-V and then proceeds if no Hyper-V and Intel processor are detected. If they both are, it gives the user the option to continue, which will fail spectacularly if VBS is enabled. RwEverything's driver has no exception handling for MSR access, when the hypervisor injects its `#GP` exception, it is uncaught and brings down the system.
 
-On Intel processors only a single MSR must be read, then the status can be determined by looking MSR\_0x13A\[29:28\].
+On Intel processors only a single MSR must be read, then the status can be determined by looking at MSR `0x13A[29:28]`.
 
-| MSR\_0x13A | BootGuard Status |
+| MSR 0x13A | BootGuard Status |
 | --- | --- |
 | `0x00000000` | None |
 | `0x10000000` | Verified |
@@ -95,7 +95,7 @@ Given the above, it is now easy to see how to create a usermode program to call 
 ## Status
 
 - **This program is experimental and may cause a bluescreen**. **Save your data before executing.**
-    - Disable Hyper-V/other hypervisors if you bluescreen.
+    - Disable Hyper-V/other hypervisors that intercept MSRs if you bluescreen.
 
 - I don't actually know that it works.
     - None of my systems have PSB or BootGuard.
