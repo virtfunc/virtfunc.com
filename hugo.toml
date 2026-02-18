@@ -1,5 +1,5 @@
 baseURL = "https://virtfunc.com/"
-relativeURLs = true
+relativeURLs = false
 canonifyURLs = false
 
 languageCode = "en-us"
