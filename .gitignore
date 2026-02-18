@@ -1,0 +1,13 @@
+public/
+resources/_gen/
+.hugo_build.lock
+
+.hugo_cache/
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+.env
+.env.local

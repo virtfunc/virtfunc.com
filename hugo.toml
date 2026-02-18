@@ -1,0 +1,141 @@
+baseURL = "https://virtfunc.com/"
+languageCode = "en-us"
+title = "virtfunc"
+theme = "re-terminal"
+
+
+# Required for Chroma and the custom syntax highlighting.
+[markup.highlight]
+  noClasses = false
+
+[params]
+  # dir name of your main content (default is `content/posts`).
+  # the list of set content will show up on your index page (baseurl).
+  contentTypeName = "posts"
+
+  themeColor = "green"
+
+  # if you set this to 0, only submenu trigger will be visible
+  showMenuItems = 60
+
+  # show selector to switch language
+  showLanguageSelector = false
+
+  # set theme to full screen width
+  fullWidthTheme = false
+
+  # center theme with default width
+  centerTheme = true
+
+  # if your resource directory contains an image called `cover.(jpg|png|webp)`,
+  # then the file will be used as a cover automatically.
+  # With this option you don't have to put the `cover` param in a front-matter.
+  autoCover = true
+
+  # set post to show the last updated
+  # If you use git, you can set `enableGitInfo` to `true` and then post will automatically get the last updated
+  showLastUpdated = false
+
+  # Provide a string as a prefix for the last update date. By default, it looks like this: 2020-xx-xx [Updated: 2020-xx-xx] :: Author
+  # updatedDatePrefix = "Updated"
+
+  # whether to show a page's estimated reading time
+  # readingTime = false # default
+
+  # whether to show a table of contents
+  # can be overridden in a page's front-matter
+  # Toc = false # default
+
+  # set title for the table of contents
+  # can be overridden in a page's front-matter
+  # TocTitle = "Table of Contents" # default
+
+  # Set date/time format for posts
+  # This will impact the date/time displayed on
+  # index.html, the posts list page, and on posts themselves
+  # This value can also be configured per-post on front matter
+  # If you have any issues with the timezone rendering differently
+  # than you expected, please ensure your timezone is correctly set
+  # on your server.
+  # This value can be customized according to Hugo documentation:
+  # https://gohugo.io/functions/time/format/
+  # Default value (no changes needed):
+  # dateFormat = "2006-01-02"
+  # Example format, with date, time, and timezone abbreviation:
+  # dateFormat = "2006-01-02 3:04:06 PM MST"
+
+
+[languages]
+  [languages.en]
+    languageName = "English"
+    title = "virtfunc"
+
+    [languages.en.params]
+      subtitle = "A simple, retro theme for Hugo"
+      owner = ""
+      keywords = ""
+      copyright = ""
+      menuMore = "Show more"
+      readMore = "Read more"
+      readOtherPosts = "Read other posts"
+      newerPosts = "Newer posts"
+      olderPosts = "Older posts"
+      missingContentMessage = "Page not found..."
+      missingBackButtonLabel = "Back to home page"
+      minuteReadingTime = "min read"
+      words = "words"
+
+      [languages.en.params.logo]
+        logoText = "virtfunc"
+        logoHomeLink = "/"
+
+      [languages.en.menu]
+        # Projects
+        [[languages.en.menu.main]]
+            parent = "Projects"
+            identifier = "bootguard-psb-checker"
+            name = "BootGuard / PSB Checker"
+            url = "/projects/bootguard-psb-checker"
+        [[languages.en.menu.main]]
+            parent = "Projects"
+            identifier = "pingplot"
+            name = "PingPlot"
+            url = "/projects/pingplot"
+        [[languages.en.menu.main]]
+            parent = "Projects"
+            identifier = "kvm-rapid-iteration"
+            name = "KVM Rapid Iteration"
+            url = "/projects/kvm-rapid-iteration"
+        [[languages.en.menu.main]]
+            parent = "Projects"
+            identifier = "tpm2-antilog"
+            name = "TPM2 AntiLog"
+            url = "/projects/tpm2-antilog"
+        [[languages.en.menu.main]]
+            parent = "Projects"
+            identifier = "wasm-uefipatch"
+            name = "UEFIPatch Online"
+            url = "/projects/wasm-uefipatch"
+        [[languages.en.menu.main]]
+            parent = "Projects"
+            identifier = "insecureboot"
+            name = "InsecureBoot"
+            url = "/projects/insecureboot"
+
+        # Info
+        [[languages.en.menu.main]]
+            parent = "Info"
+            identifier = "sn850x-linux-performance"
+            name = "WD SN850X Linux performance"
+            url = "/info/sn850x-linux-performance"
+        [[languages.en.menu.main]]
+            parent = "Info"
+            identifier = "msi-motherboard-flash-methods"
+            name = "MSI Modded BIOS Flash"
+            url = "/info/msi-motherboard-flash-methods"
+        [[languages.en.menu.main]]
+            parent = "Info"
+            identifier = "microcode-matchreg-zen-4-ryzen-7000-series"
+            name = "Microcode matchreg Zen 4 Ryzen 7000 series"
+            url = "/info/microcode-matchreg-zen-4-ryzen-7000-series"
+
