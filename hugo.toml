@@ -1,4 +1,7 @@
 baseURL = "https://virtfunc.com/"
+relativeURLs = true
+canonifyURLs = false
+
 languageCode = "en-us"
 title = "virtfunc"
 theme = "re-terminal"
