@@ -26,7 +26,23 @@ This can be accomplished relatively safely by following the rough steps outlined
 
 6. Restart killed VMs.
 
-On first use, the script may perform a full kernel build if it cannot find `vmlinux` in the source folder. Subsequent iterations skip the full build, reducing iteration time from ~10 minutes to approximately 5 seconds, plus the time it takes to reboot your virtual machines. To use the script, simply make your changes to the source code and run it. Note that a full build will revert to the tag specified. For iterative builds, the script uses the current source files on disk directly, no Git operations are performed.
+On first use, the script may perform a full kernel build if it cannot find `vmlinux` in the source folder. Subsequent iterations skip the full build, reducing iteration time from ~10 minutes to approximately 5 seconds, plus the time it takes to reboot your virtual machines. 
+
+To use the script:
+
+1. Clone a copy of [AutoVirt](https://github.com/Scrut1ny/AutoVirt). (commit `c69721f` was tested.)
+
+2. Drop the script in the `modules` folder.
+
+3. Build the kernel by executing the kernel script in `modules` folder.
+
+4. Make your changes to the linux kernel KVM source code on disk. 
+
+5. Run the iteration script after killing all VMs.
+
+6. Restart your VMs
+
+Note that a full build will revert to the tag specified. For iterative builds, the script uses the current source files on disk directly, no Git operations are performed.
 
 # Source:  
 Available at: [https://gist.github.com/virtfunc/2278f2f6f1d486521cb635813ff8dde7](https://gist.github.com/virtfunc/2278f2f6f1d486521cb635813ff8dde7)
