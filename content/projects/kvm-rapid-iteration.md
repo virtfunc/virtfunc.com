@@ -40,7 +40,7 @@ To use the script:
 
 5. Run the iteration script after killing all VMs.
 
-6. Restart your VMs
+6. Restart your VMs.
 
 Note that a full build will revert to the tag specified. For iterative builds, the script uses the current source files on disk directly, no Git operations are performed.
 

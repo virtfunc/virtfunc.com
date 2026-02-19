@@ -5,7 +5,7 @@ date: 2024-12-05
 
 # virtfunc
 
-Nerd interested in UEFI firmware modding, OS internals, Hypervisor stealth/detection, platform security and reversing.
+Nerd interested in UEFI firmware modding, OS internals, hypervisor stealth/detection, platform security and reversing.
 
 ## Contact
 
