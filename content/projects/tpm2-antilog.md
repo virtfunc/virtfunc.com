@@ -14,9 +14,19 @@ TCG logs can be used to verify the boot chain against tampering, and are often u
 
 However because the root of trust is often the SPI flash itself, such a system is vulnerable to patching of the routines that log and extend the TPM2 Platform Configuration Registers (PCRs). This post will discuss a simple patch that prevents logging of UEFI image hashes and extension of the PCRs related the boot sequence.
 
-Given a firmware binary, the location of the code that performs the measurement must be identified. An easy way I have found to do this is to reference the [EDKII](https://github.com/tianocore/edk2/) source code and find functions relating to measurement, log creation and PCR extension. `[Tcg2HashLogExtendEvent](https://github.com/tianocore/edk2/blob/ad5030d73171d9aae30ee74c4b2cd41686b93bcd/SecurityPkg/Tcg/Tcg2Dxe/Tcg2Dxe.c#L1310)` is a function that resides in `Tcg2Dxe`, so analysis should be started by dumping the PE with this name or its associated GUID using a tool that can parse a UEFI firmware image, such as UEFITool.
+Given a firmware binary, the location of the code that performs the measurement must be identified. An easy way I have found to do this is to reference the [EDKII](https://github.com/tianocore/edk2/) source code and find functions relating to measurement, log creation and PCR extension. [`Tcg2HashLogExtendEvent`](https://github.com/tianocore/edk2/blob/ad5030d73171d9aae30ee74c4b2cd41686b93bcd/SecurityPkg/Tcg/Tcg2Dxe/Tcg2Dxe.c#L1310) is a function that resides in `Tcg2Dxe`, so analysis should be started by dumping the PE with this name or its associated GUID using a tool that can parse a UEFI firmware image, such as UEFITool.
 
-`EFI_STATUS   EFIAPI   Tcg2HashLogExtendEvent (   IN EFI_TCG2_PROTOCOL *This,   IN UINT64 Flags,   IN EFI_PHYSICAL_ADDRESS DataToHash,   IN UINT64 DataToHashLen,   IN EFI_TCG2_EVENT *Event   )`
+```c
+EFI_STATUS   
+EFIAPI     
+Tcg2HashLogExtendEvent (   
+  IN EFI_TCG2_PROTOCOL *This,   
+  IN UINT64 Flags,   
+  IN EFI_PHYSICAL_ADDRESS DataToHash,   
+  IN UINT64 DataToHashLen,   
+  IN EFI_TCG2_EVENT *Event   
+)
+```
 
 After extracting this binary, the image can be analyzed. I will be using IDA Pro with [efiXplorer](https://github.com/binarly-io/efiXplorer/) to more easily manage the GUIDs and automatic location of boot services functions. After performing analysis with efiXplorer, a list of multiple protocols interfaces was produced. `AMI_PROTOCOL_INTERNAL_HLXE` looked like a good place to start analysis.
 
@@ -49,11 +59,18 @@ This appears to work for many modern AMI binaries, but for some older ones, the 
 
 In either case the function can be patched out by replacing these bytes with the following instructions, padded with extra C3 (ret) to match the length of the search bytes. Obviously we do not care about the code we are overwriting because it will never be executed under our patch.
 
-`48 31 C0 xor rax, rax   C3 ret`
+```
+48 31 C0   xor rax, rax   
+C3         ret
+```
 
 The final patch, after converting to a format UEFIPatch can use, is as follows:
 
-`# Return EFI_SUCCESS early in AMI's internal HashLogExtendEvent function.   39045756-FCA3-49BD-8DAE-C7BAE8389AFF 10 P:488BC4488958104C8940184889480855565741544155415641574883EC:4831C0C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3   39045756-FCA3-49BD-8DAE-C7BAE8389AFF 10 P:4C894C24204C89442418488954241048894C24084881ECE801000048C7:4831C0C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3`
+```patch
+# Return EFI_SUCCESS early in AMI's internal HashLogExtendEvent function.   
+39045756-FCA3-49BD-8DAE-C7BAE8389AFF 10 P:488BC4488958104C8940184889480855565741544155415641574883EC:4831C0C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3  
+39045756-FCA3-49BD-8DAE-C7BAE8389AFF 10 P:4C894C24204C89442418488954241048894C24084881ECE801000048C7:4831C0C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3
+```
 
 This patch functions as expected on my MSI AM5 motherboard, here are the results of the PCRs after the patch. The firmware PCR remains but does not produce any meaningful logs related to the boot chain. It was redacted because I do not want these specific firmware images to be used for fingerprinting. The measurement of the firmware occurs in a different part of the boot chain, thus the PCR is populated.
 

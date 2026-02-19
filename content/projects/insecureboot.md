@@ -58,10 +58,15 @@ IDA style:
 `48 8B C4 48 89 58 08 48 89 ? 18 48 89 ? 20 48 89 50 10 ? 41 54 41 55 41 56 41 57 48`
 
 After converting to the UEFIPatch format:  
-`F80697E9-7FD6-4665-8646-88E33EF71DFC 10 P:488BC4488958084889..184889..2048895010..415441554156415748:4831C0C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3`
+```patch
+F80697E9-7FD6-4665-8646-88E33EF71DFC 10 P:488BC4488958084889..184889..2048895010..415441554156415748:4831C0C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3
+```
 
 This patch replaces the start of [DxeImageVerificationHandler](https://github.com/tianocore/edk2/blob/master/SecurityPkg/Library/DxeImageVerificationLib/DxeImageVerificationLib.c#L1659) with:  
-`xor rax, rax   ret`
+```
+xor rax, rax   
+ret
+```
 
 Which returns 0 (EFI\_SUCCESS) right away, the rest is padding it with `ret` because the UEFIPatch behaves better when we maintain the file size, and also changing the binary size when patching is just weird.
 
@@ -79,21 +84,21 @@ Alternatively, use your own version of UEFIPatch with the below patch, saving `p
 
 patches.txt (Alternative Method)
 
-```
+```patch
 # Replace EFI_SECURITY_VIOLATION and EFI_ACCESS_DENIED with EFI_SUCCESS in SecurityStubDxe
 F80697E9-7FD6-4665-8646-88E33EF71DFC 10 P:1A00000000000080:0000000000000000F80697E9-7FD6-4665-8646-88E33EF71DFC 10 P:0F00000000000080:0000000000000000
 ```
 
 patches.txt (Simplified Patchboot Method)
 
-```
+```patch
 # Return EFI_SUCCESS early in DxeImageVerificationHandler
 F80697E9-7FD6-4665-8646-88E33EF71DFC 10 P:488BC4488958084889..184889..2048895010..415441554156415748:4831C0C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3
 ```
 
 UEFIPatch usage:
 
-```
+```shell
 UEFIPatch <UEFI_ROM_FILE> patches.txt
 ```
 

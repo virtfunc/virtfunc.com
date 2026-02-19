@@ -1,6 +1,5 @@
 baseURL = "https://virtfunc.com/"
 relativeURLs = false
-canonifyURLs = false
 
 languageCode = "en-us"
 title = "virtfunc"
@@ -121,7 +120,7 @@ theme = "re-terminal"
             parent = "Projects"
             identifier = "wasm-uefipatch"
             name = "UEFIPatch Online"
-            url = "/projects/wasm-uefipatch"
+            url = "https://uefipatch.virtfunc.com/"
         [[languages.en.menu.main]]
             parent = "Projects"
             identifier = "insecureboot"

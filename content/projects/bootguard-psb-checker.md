@@ -58,8 +58,9 @@ After selecting PciWriteDword, the disassembly appears, and can be decompiled by
 
 The decompiled code is alright, but not ideal, and we can see the 3 `BYTE` arguments (`a3`, `a5`, `a6`), the `WORD` argument (`a11`) and the `DWORD` argument (`a12`). By cleaning the above code up, we get the following code and command structure.
 
-```
-char __fastcall TReadWrite::PciWriteDword(TReadWrite *this, BYTE bus, BYTE dev, BYTE func, WORD reg, DWORD value)
+```c
+char __fastcall 
+TReadWrite::PciWriteDword(TReadWrite *this, BYTE bus, BYTE dev, BYTE func, WORD reg, DWORD value)
 {
   HANDLE *Instance; // rax
   DWORD BytesReturned; // [rsp+4Ch] [rbp-1Ch] BYREF
@@ -76,7 +77,7 @@ char __fastcall TReadWrite::PciWriteDword(TReadWrite *this, BYTE bus, BYTE dev, 
 }
 ```
 
-```
+```c
 struct CMD_PCI_RW_DWORD // sizeof=0xC
 00000000 {                                       
 00000000     BYTE bus;                           
