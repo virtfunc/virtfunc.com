@@ -9,25 +9,27 @@ Rebuilding a the full linux kernel when modifying KVM for the purposes of patchi
 
 This can be accomplished relatively safely by following the rough steps outlined below:
 
-1. Fully building the kernel once, and loading this built kernel.
+1. Fully build the kernel once, and loading this built kernel.
 
-3. Compiling only KVM as a module.
+2. Compile only KVM as a module.
 
-5. Killing all running VMs.
+3. Kill all running VMs.
 
-7. Removing existing KVM modules.
+4. Remove existing KVM modules.
 
-9. Loading freshly built KVM modules.
+5. Load freshly built KVM modules.
 
-On first use (or with the `--full` argument), the script will perform a full kernel build — this is necessary at least once. Subsequent iterations typically skip the full build, reducing iteration time from minutes to approximately 5 seconds, plus the time it takes to reboot your virtual machines. To use the script, simply make your changes to the source code and run it. Note that a full build will overwrite your modifications unless they are included as a userpatch. For iterative builds, the script uses the current source files on disk directly—no Git operations are performed.
+6. Restart killed VMs.
 
-Source:  
+On first use, the script may perform a full kernel build if it cannot find `vmlinux` in the source folder. Subsequent iterations skip the full build, reducing iteration time from ~10 minutes to approximately 5 seconds, plus the time it takes to reboot your virtual machines. To use the script, simply make your changes to the source code and run it. Note that a full build will revert to the tag specified. For iterative builds, the script uses the current source files on disk directly, no Git operations are performed.
+
+# Source:  
 Available at: [https://gist.github.com/virtfunc/2278f2f6f1d486521cb635813ff8dde7](https://gist.github.com/virtfunc/2278f2f6f1d486521cb635813ff8dde7)
 
 Caveats and assumptions:
 
-- Only tested on AMD.
+- Hardcoded to use `kvm_amd`, but should work on Intel processors with simple modifications.
 
-- Expects to be present in the `modules` folder of a [AutoVirt](https://github.com/Scrut1ny/AutoVirt) git project.
+- Expects to be present in the `modules` folder of an [AutoVirt](https://github.com/Scrut1ny/AutoVirt) git project. (Tested against commit `c69721f`.)
 
 - Assumes Arch Linux, other distros untested.
