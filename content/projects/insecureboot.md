@@ -53,11 +53,14 @@ For some firmware implementations, replacing `EFI_ACCESS_DENIED` with `EFI_SUCCE
 
 ## Simplified PatchBoot Method
 
-Manually extracting the SecurityStubDxe PE image and then patching it manually is error prone, to address this, I have created a signature based patch for that appears to work for a good chunk of motherboards. The following signature can be used to identify [DxeImageVerificationHandler](https://github.com/tianocore/edk2/blob/master/SecurityPkg/Library/DxeImageVerificationLib/DxeImageVerificationLib.c#L1659):  
-IDA style:  
-`48 8B C4 48 89 58 08 48 89 ? 18 48 89 ? 20 48 89 50 10 ? 41 54 41 55 41 56 41 57 48`
+Manually extracting the SecurityStubDxe PE image and then patching it manually is error prone, to address this, I have created a signature based patch for that appears to work for a good chunk of motherboards. The following signature can be used to identify [DxeImageVerificationHandler](https://github.com/tianocore/edk2/blob/master/SecurityPkg/Library/DxeImageVerificationLib/DxeImageVerificationLib.c#L1659): 
 
-After converting to the UEFIPatch format:  
+IDA style:  
+```hex
+48 8B C4 48 89 58 08 48 89 ? 18 48 89 ? 20 48 89 50 10 ? 41 54 41 55 41 56 41 57 48
+```
+
+UEFIPatch style:  
 ```patch
 F80697E9-7FD6-4665-8646-88E33EF71DFC 10 P:488BC4488958084889..184889..2048895010..415441554156415748:4831C0C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3
 ```
@@ -68,7 +71,7 @@ xor rax, rax
 ret
 ```
 
-Which returns 0 (EFI\_SUCCESS) right away, the rest is padding it with `ret` because the UEFIPatch behaves better when we maintain the file size, and also changing the binary size when patching is just weird.
+Which returns 0 (`EFI_SUCCESS`) right away, the rest is padding it with `ret` because the UEFIPatch behaves better when we maintain the file size, and changing the binary size when patching is asking for trouble.
 
 ### Disclaimer
 

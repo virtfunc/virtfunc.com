@@ -3,6 +3,11 @@ title: "KVM Rapid Iteration"
 date: 2025-06-04
 categories: 
   - "projects"
+tags: 
+  - "kvm"
+  - "iterate-module"
+  - "linux-recompile"
+  - "rapid-iteration"
 ---
 
 Rebuilding a the full linux kernel when modifying KVM for the purposes of patching VM exit RDTSC timings is a tedious process. Thankfully, the linux kernel is modular and can be built in pieces and incrementally upgraded.
