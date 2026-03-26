@@ -11,38 +11,43 @@ tags:
   - "timing-detection"
 ---
 
-Timing attacks continue to be a common vector for VM detection, as VM exits are very time intensive. The time taken by VM exits can be measured using various timers to as a flag for hypervisor presence, if abnormally large.
+## Introduction
 
-On an Intel CPU, which provides the [VMX](include link) extension for virtualization, CPUID unconditionally causes a VM exit, so without manual timer mitigations the overhead will always be present, and as a consequnce, can be identified with a timing check.
+Timing attacks remain a prevalent vector for Virtual Machine (VM) detection because VM exits are computationally expensive. On Intel CPUs providing the **[VMX](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)** (Virtual Machine Extensions) architecture, the `CPUID` instruction unconditionally triggers a VM exit. Without manual mitigation of the transition overhead, the resulting latency serves as a flag of hypervisor presence.
 
-Most hypervisors intercept the CPUID instruction, causing a VM exit. This is commonly done to present a different feature set to the guest, which has many use cases, for example, live migration.
+Most hypervisors intercept `CPUID` to present a modified feature set to the guest. This is essential for various use cases, such as live migration between different hardware models.
 
-However, AMD CPUs do not impose such a restriction on guests virtualized under their own virtualization extension, [SVM](include link). An SVM guest can be configured to not intercept CPUID by clearing bit 18 at offset 0xC in the Virtual Machine Control Block (VMCB). [include link]
+However, AMD CPUs do not impose this restriction on guests virtualized under the **[SVM](https://www.amd.com/system/files/TechDocs/24593.pdf)** (Secure Virtual Machine) extension. An SVM guest can be configured to bypass `CPUID` interception by clearing bit 18 at offset 0xC in the Virtual Machine Control Block (VMCB) **[See Page 737 of the APM](https://docs.amd.com/api/khub/documents/68GKiN0gMEd6bMddsmhPwg/content?#G27.1021954.9Y)**.
 
-So, great, with this knowledge we can go ahead and flip that bit in the VMCB and our hypervisor will be immune to CPUID based timing checks, right?
+## Challenges in Implementation
 
-If only it were that simple.
+Flipping this bit in the VMCB should, in theory, make a hypervisor immune to `CPUID` timing checks. However, bypassing the intercept passes the raw silicon data and `CPUID` leaves directly to the guest, which introduces several critical issues:
 
+1.  **Topology Mismatches:** The host CPU topology may differ from the hardware allocated to the VM, such as running a 6-core VM on an 8-core host.
+2.  **Feature Set Inconsistency:** Passing through raw data may change the feature set presented to the virtualized OS, which occasionally leads to system instability.
+3.  **Boot Failures:** The VM may fail to boot entirely. I believe this is caused by mismatched APIC IDs where the ACPI tables do not align with the underlying hardware.
 
-By flipping that bit, we are passing through our silicon's raw CPUID leaves and data. This causes several issues:
+The first issue is resolvable by matching the VM core count to the host and utilizing **[libvirt pinning](https://libvirt.org/formatdomain.html#cpu-tuning)** to align the topologies.
 
-1. Your CPU topology may differ from the hardware passed through to your VM, for example: a 6 core VM on an 8 core host.
+The second issue can be addressed using tools like **[arch\_enum](https://github.com/daaximus/arch_enum)** to identify differences between host and guest features. Emulators like QEMU often expose emulated Intel features by default; these must be disabled to maintain stealth and stability.
 
-2. You may have changed the feature set you are presenting to the virtualized OS, potentially causing instability.
+The third issue is the most significant hurdle, as a VM that cannot boot is of questionable utility.
 
-3. Your VM fails to boot. (I believe this to be caused by mismatched APIC ids. The ACPI tables do not match the hardware.)
+# A Solution
+## Theory
 
-The first issue can be resolved by giving the virtual machine the same number of cores as the host. For performance it is also usually best to pin the cores to match the host topology. See [libvirt pinning](link).
+A practical solution involves disabling `CPUID` intercepts at runtime only after the guest VM has successfully initialized all CPU cores. While one could create a KVM parameter to toggle intercepts manually, doing so at every boot is inefficient.
 
-The second issue can be resolved by using a tool such as [arch_enum](https://github.com/daaximus/arch_enum) identify feature differences between the host and the guest, using this information, features that do not match the host can be disabled. The default configuration of emulators such as QEMU often expose emulated Intel features and their corrosponding CPUID leaves. These should be disabled for stealth and stability.
+A more automated approach follows this logic:
 
-The third and final issue is the one that scares most people away instantly. The VM does not boot.
+  * Enable `CPUID` exits during the initial guest start sequence.
+  * Hook a VM exit that reliably occurs after all cores have been initialized.
+  * From that hook, loop through all vCPUs to disable their `CPUID` intercepts.
+  * Conduct runtime tests without the performance overhead of `CPUID` transitions.
+  * Restore the intercepts upon a guest reboot to ensure the next boot sequence succeeds.
 
-A solution that I have found sufficient for my use, (although a little bit of a hack), is to disable CPUID intercepts at runtime, after the guest VM has had a chance to initialize all the cores of the VM. One can create a KVM parameter to toggle the intercepts of CPUID at will, and this works well, but is a little bit cumbersome to toggle the interception on and off every time at boot.
+## Implementation
 
-A better solution I have found is the following:
-
-Enable CPUID exits at guest start.
 
 
 
