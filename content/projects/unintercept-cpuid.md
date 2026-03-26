@@ -1,6 +1,6 @@
 ---
 title: "Unintercept CPUID"
-date: 2025-06-04
+date: 2026-03-25
 categories: 
   - "projects"
 tags: 
@@ -13,11 +13,11 @@ tags:
 
 ## Introduction
 
-Timing attacks remain a prevalent vector for Virtual Machine (VM) detection because VM exits are computationally expensive. On Intel CPUs providing the **[VMX](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html)** (Virtual Machine Extensions) architecture, the `CPUID` instruction unconditionally triggers a VM exit. Without manual mitigation of the transition overhead, the resulting latency serves as a flag of hypervisor presence.
+Most hypervisors intercept the CPUID instruction to present a modified feature set to the guest. This behavior is critical for use cases like live migration across different hardware models, and disabling features that the emulator does not handle.
 
-Most hypervisors intercept `CPUID` to present a modified feature set to the guest. This is essential for various use cases, such as live migration between different hardware models.
+However, this interception introduces a detectable side effect. Timing attacks are a common method for virtual machine (VM) detection because VM exits are relatively expensive operations. On Intel CPUs that support Virtual Machine Extensions ([VMX](https://en.wikipedia.org/wiki/X86_virtualization#Intel_virtualization_(VT-x))), executing CPUID unconditionally causes a VM exit. Without manual mitigation of the transition overhead, the resulting latency serves as a flag of hypervisor presence.
 
-However, AMD CPUs do not impose this restriction on guests virtualized under the **[SVM](https://www.amd.com/system/files/TechDocs/24593.pdf)** (Secure Virtual Machine) extension. An SVM guest can be configured to bypass `CPUID` interception by clearing bit 18 at offset 0xC in the Virtual Machine Control Block (VMCB) **[See Page 737 of the APM](https://docs.amd.com/api/khub/documents/68GKiN0gMEd6bMddsmhPwg/content?#G27.1021954.9Y)**.
+However, AMD CPUs do not impose this restriction on guests virtualized under the Secure Virtual Machine ([SVM](https://en.wikipedia.org/wiki/X86_virtualization#AMD_virtualization_(AMD-V))) extension. An SVM guest can be configured to bypass `CPUID` interception by clearing bit 18 at offset `0xC` in the Virtual Machine Control Block (VMCB) ([Appendix B of AMD document 24593](https://docs.amd.com/api/khub/documents/68GKiN0gMEd6bMddsmhPwg/content?#G27.1021954.9Y)).
 
 ## Challenges in Implementation
 
@@ -27,16 +27,15 @@ Flipping this bit in the VMCB should, in theory, make a hypervisor immune to `CP
 2.  **Feature Set Inconsistency:** Passing through raw data may change the feature set presented to the virtualized OS, which occasionally leads to system instability.
 3.  **Boot Failures:** The VM may fail to boot entirely. I believe this is caused by mismatched APIC IDs where the ACPI tables do not align with the underlying hardware.
 
-The first issue is resolvable by matching the VM core count to the host and utilizing **[libvirt pinning](https://libvirt.org/formatdomain.html#cpu-tuning)** to align the topologies.
+The first issue is resolvable by matching the VM core count to the host and utilizing [libvirt pinning](https://libvirt.org/formatdomain.html#cpu-tuning) to align the guest topology with the host.
 
-The second issue can be addressed using tools like **[arch\_enum](https://github.com/daaximus/arch_enum)** to identify differences between host and guest features. Emulators like QEMU often expose emulated Intel features by default; these must be disabled to maintain stealth and stability.
+The second issue can be addressed using tools like [arch\_enum](https://github.com/daaximus/arch_enum) to identify differences between host and guest features. Emulators like QEMU often expose emulated Intel features by default; these must be disabled to maintain stealth and stability.
 
 The third issue is the most significant hurdle, as a VM that cannot boot is of questionable utility.
 
-# A Solution
-## Theory
+# Solution Theory
 
-A practical solution involves disabling `CPUID` intercepts at runtime only after the guest VM has successfully initialized all CPU cores. While one could create a KVM parameter to toggle intercepts manually, doing so at every boot is inefficient.
+A practical solution involves disabling `CPUID` intercepts at runtime only after the guest VM has successfully initialized all CPU cores. While one could create a KVM parameter to toggle intercepts manually, doing so at every boot is tedious and error prone.
 
 A more automated approach follows this logic:
 
@@ -48,7 +47,52 @@ A more automated approach follows this logic:
 
 ## Implementation
 
+Enabling `CPUID` exits during the initial startup sequence is the first—and only—action performed for us. After the cores are initialized, Windows appears to enumerate CPUID leaves starting from 0 up to the maximum value returned in `EAX` when `CPUID` is invoked with `EAX = 0` (which indicates the highest supported leaf). According to the AMD manual, leaves `0x00000008` through `0x0000000A` are reserved, meaning calls to `CPUID` with these values do not provide useful information and are most likely part of a simple enumeration loop.
 
+Any leaf in this range is valid, so here lets choose `0x00000008` as our trigger point to disable CPUID intercepts. A simple CPUID hook that catches this could be implemented as:
+```
+#define RESERVED_LEAF 0x00000008
+static int windows_boot_hook(struct kvm_vcpu *vcpu)
+{
+    u32 eax = kvm_rax_read(vcpu);
+    int ret = kvm_emulate_cpuid(vcpu);
+    if (eax == RESERVED_LEAF) svm_set_cpuid_intercept_for_all_vcpus(vcpu, false);
+    return ret;
+}
+```
+Here `svm_set_cpuid_intercept_for_all_vcpus()` is a function that sets a flag to update the CPUID intercept, as well as sets the desired state of the interupt. Then after setting the flags for all the cores, it kicks the CPUs so they have a chance to process the update. 
 
+A reset/reboot detection hook could be implemented like below. `svm_set_segment()` gets called in cases other than processor resets, so we should do some filtering to make sure the core is the Bootstrap Processor (BSP), and is being reset.
+```
+static void svm_set_segment(struct kvm_vcpu *vcpu, struct kvm_segment *var, int seg)
+{
+  ...
+    if (unlikely(vcpu->vcpu_id == 0 && seg == VCPU_SREG_CS &&
+        var->base == 0xffff0000)) {//detect BSP x86 reset
+          printk(KERN_INFO "kvm_amd: BSP reset detected\n");
+          svm_set_cpuid_intercept_for_all_vcpus(vcpu, true);
+    }
+  ...
+}
+```
+To actually update the state of the intercept, something like the following is used. The flag controlling the CPUID intercept update exists as a performance optimization: since `struct vcpu_svm` is already part of the fast path and typically cached, using a flag avoids making a comparison against the VMCB intercept region, and an unconditional `vmcb_mark_dirty()` call on every `svm_vcpu_run()`.
+```
+static __no_kcsan fastpath_t svm_vcpu_run(struct kvm_vcpu *vcpu, u64 run_flags)
+{
+  ...
+    if (unlikely(svm->cpuid_update_req)) { // simple check instead of cmp against vcpu_svm
+      svm->cpuid_update_req = false; // clear request
+      if (svm->cpuid_intercept) svm_set_intercept(svm, INTERCEPT_CPUID);
+      else svm_clr_intercept(svm, INTERCEPT_CPUID);
+      vmcb_mark_dirty(svm->vmcb, VMCB_INTERCEPTS);
+    } 
+  ...
+}
+```
+# Results
+Using this patch, it is possible to fully bypass CPUID based timing attacks. With correctly configured firmware and QEMU, it is possible to obtain 0/91 detections on the latest version of [VMAware](https://github.com/kernelwernel/VMAware).
 
+![](/images/unintercept-cpuid/vmaware_bypass.png)
 
+# Future Work
+Ideally, the system would be able to boot completely without intercepting CPUID in early boot, this would likely require some patches to QEMU to fix discrepancies related to APIC configuration.
