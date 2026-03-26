@@ -98,6 +98,11 @@ theme = "re-terminal"
         # Projects
         [[languages.en.menu.main]]
             parent = "Projects"
+            identifier = "unintercept-cpuid"
+            name = "Unintercept CPUID"
+            url = "/projects/unintercept-cpuid"
+        [[languages.en.menu.main]]
+            parent = "Projects"
             identifier = "bootguard-psb-checker"
             name = "BootGuard / PSB Checker"
             url = "/projects/bootguard-psb-checker"
