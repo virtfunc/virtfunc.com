@@ -60,7 +60,7 @@ static int windows_boot_hook(struct kvm_vcpu *vcpu)
     return ret;
 }
 ```
-Here `svm_set_cpuid_intercept_for_all_vcpus()` is a function that sets a flag to update the CPUID intercept, as well as sets the desired state of the interupt. Then after setting the flags for all the cores, it kicks the CPUs so they have a chance to process the update. 
+Here `svm_set_cpuid_intercept_for_all_vcpus()` is a function that sets a flag to update the CPUID intercept, as well as sets the desired state of the intercept. Then after setting the flags for all the cores, it kicks the CPUs so they have a chance to process the update. 
 
 A reset/reboot detection hook could be implemented like below. `svm_set_segment()` gets called in cases other than processor resets, so we should do some filtering to make sure the core is the Bootstrap Processor (BSP), and is being reset.
 ```
