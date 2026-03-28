@@ -24,18 +24,20 @@ However, AMD CPUs do not impose this restriction on guests virtualized under the
 Flipping this bit in the VMCB should, in theory, make a hypervisor immune to `CPUID` timing checks. However, bypassing the intercept passes the raw silicon data and `CPUID` leaves directly to the guest, which introduces several critical issues:
 
 1.  **Topology Mismatches:** The host CPU topology may differ from the hardware allocated to the VM, such as running a 6-core VM on an 8-core host.
-2.  **Feature Set Inconsistency:** Passing through raw data may change the feature set presented to the virtualized OS, which occasionally leads to system instability.
-3.  **Boot Failures:** The VM may fail to boot entirely. I believe this is caused by mismatched APIC IDs where the ACPI tables do not align with the underlying hardware.
+2.  **Feature Set Inconsistency:** Passing through raw data may change the feature set presented to the virtualized OS, which occasionally leads to system instability if changed at runtime.
+3.  **Boot Failures:** The VM may fail to boot entirely. This is caused by CET not being implemented in current QEMU versions (v10.2.x), as well as some MSR issues.
 
-The first issue is resolvable by matching the VM core count to the host and utilizing [libvirt pinning](https://libvirt.org/formatdomain.html#cpu-tuning) to align the guest topology with the host.
+The first issue is resolvable by matching the VM core count to the host and utilizing [libvirt pinning](https://libvirt.org/formatdomain.html#cpu-tuning) ensure the cores do not move between different physical cores and confuse the kernel.
 
-The second issue can be addressed using tools like [arch\_enum](https://github.com/daaximus/arch_enum) to identify differences between host and guest features. Emulators like QEMU often expose emulated Intel features by default; these must be disabled to maintain stealth and stability.
+The second issue can be addressed using tools like [arch\_enum](https://github.com/daaximus/arch_enum) to identify differences between host and guest features. Emulators like QEMU often expose emulated Intel features by default for AMD CPUs; these must be disabled to maintain stealth and stability. Depending on the method used for patching disabling intercepts on CPUID, this may not be needed.
 
 The third issue is the most significant hurdle, as a VM that cannot boot is of questionable utility.
 
-# Solution Theory
+## Solution Theory
 
-A practical solution involves disabling `CPUID` intercepts at runtime only after the guest VM has successfully initialized all CPU cores. While one could create a KVM parameter to toggle intercepts manually, doing so at every boot is tedious and error prone.
+To work on fixing the third issue, we first need to patch QEMU to support CET for KVM guests. Recent linux kernels already have CET support in KVM, but QEMU does not virtualize it. A patch to enable support is available [here](https://patchwork.ozlabs.org/series/485044/mbox/).
+
+A hacky solution involves disabling `CPUID` intercepts at runtime only after the guest VM has successfully initialized all CPU cores. While one could create a KVM parameter to toggle intercepts manually, doing so at every boot is tedious and error prone.
 
 A more automated approach follows this logic:
 
@@ -49,7 +51,7 @@ A more automated approach follows this logic:
 
 Enabling `CPUID` exits during the initial startup sequence is the first—and only—action performed for us. After the cores are initialized, Windows appears to enumerate CPUID leaves starting from 0 up to the maximum value returned in `EAX` when `CPUID` is invoked with `EAX = 0` (which indicates the highest supported leaf). According to the AMD manual, leaves `0x00000008` through `0x0000000A` are reserved, meaning calls to `CPUID` with these values do not provide useful information and are most likely part of a simple enumeration loop.
 
-Any leaf in this range is valid, so here lets choose `0x00000008` as our trigger point to disable CPUID intercepts. A simple CPUID hook that catches this could be implemented as:
+Any leaf in this range is valid, so here lets choose `0x00000008` as our trigger point to disable CPUID intercepts. It is worth noting that this appears to be executed after boot start drivers have loaded. A simple CPUID hook that catches this could be implemented as:
 ```
 #define RESERVED_LEAF 0x00000008
 static int windows_boot_hook(struct kvm_vcpu *vcpu)
@@ -89,10 +91,10 @@ static __no_kcsan fastpath_t svm_vcpu_run(struct kvm_vcpu *vcpu, u64 run_flags)
   ...
 }
 ```
-# Results
+## Results
 Using this patch, it is possible to fully bypass CPUID based timing attacks. With correctly configured firmware and QEMU, it is possible to obtain 0/91 detections on the latest version of [VMAware](https://github.com/kernelwernel/VMAware).
 
 ![](/images/unintercept-cpuid/vmaware_bypass.png)
 
-# Future Work
-Ideally, the system would be able to boot completely without intercepting CPUID in early boot, this would likely require some patches to QEMU to fix discrepancies related to APIC configuration.
+## Alternatives
+A simpler method involving passing through host `CPUID` for the entire VM runtime is possible, but outside the scope of this article. Using this method, the configuration of the guest `CPUID` in QEMU is completely irrelevant, because only what the silicon reports will be seen when executing `CPUID`.
